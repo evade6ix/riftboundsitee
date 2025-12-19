@@ -43,11 +43,11 @@ app.get('/cards', async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const search = (req.query.search || '').trim();
 
-    const query = { game: 'riftbound' as const };
+    const query = { game: 'riftbound' };
 
     if (search) {
       const regex = new RegExp(search, 'i');
-      (query as any).$or = [
+      query.$or = [
         { name: regex },
         { cleanName: regex },
         { code: regex },
@@ -72,7 +72,7 @@ app.get('/cards', async (req, res) => {
       totalPages,
       data: cards,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[GET /cards] Error:', err.message);
     res.status(500).json({ error: 'Failed to fetch cards' });
   }
@@ -81,7 +81,7 @@ app.get('/cards', async (req, res) => {
 // --- API: single card by remoteId ---
 app.get('/cards/:remoteId', async (req, res) => {
   try {
-    const { remoteId } = req.params;
+    const remoteId = req.params.remoteId;
 
     const card = await Card.findOne({
       game: 'riftbound',
@@ -93,7 +93,7 @@ app.get('/cards/:remoteId', async (req, res) => {
     }
 
     res.json(card);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[GET /cards/:remoteId] Error:', err.message);
     res.status(500).json({ error: 'Failed to fetch card' });
   }
@@ -103,18 +103,18 @@ app.get('/cards/:remoteId', async (req, res) => {
 if (isProd) {
   const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 
-  // Serve static assets
+  // Serve static assets (JS, CSS, images)
   app.use(express.static(clientDistPath));
 
-  // SPA entrypoint
+  // Root -> index.html
   app.get('/', (_req, res) => {
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
 
-  // Optional: if you add client-side routing later, you can also do:
-  // app.get('*', (_req, res) => {
-  //   res.sendFile(path.join(clientDistPath, 'index.html'));
-  // });
+  // If you add client-side routing later, you can uncomment:
+//   app.get('*', (_req, res) => {
+//     res.sendFile(path.join(clientDistPath, 'index.html'));
+//   });
 } else {
   // Simple JSON root for dev
   app.get('/', (_req, res) => {
