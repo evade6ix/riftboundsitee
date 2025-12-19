@@ -1,3 +1,5 @@
+'use strict';
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -5,10 +7,10 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// Railway injects PORT automatically
+// Railway sets PORT; default 3000 locally
 const PORT = process.env.PORT || 3000;
 
-// Use env var for MongoDB, fallback for local dev
+// Use env var for MongoDB
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/riftbound_local';
 
 app.use(cors());
@@ -16,9 +18,7 @@ app.use(express.json());
 
 // --- MongoDB connection ---
 mongoose
-  .connect(mongoUri, {
-    maxPoolSize: 10
-  })
+  .connect(mongoUri, { maxPoolSize: 10 })
   .then(() => {
     console.log('[Mongo] Connected successfully');
   })
@@ -44,5 +44,5 @@ app.get('/health', (req, res) => {
 
 // --- Start server ---
 app.listen(PORT, () => {
-  console.log(\`[Server] Listening on port \${PORT}\`);
+  console.log('[Server] Listening on port ' + PORT);
 });
