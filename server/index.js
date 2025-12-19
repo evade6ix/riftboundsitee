@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+const Card = require('./models/Card');
+
 const app = express();
 
 // Railway sets PORT; default 3000 locally
@@ -26,7 +28,7 @@ mongoose
     console.error('[Mongo] Connection error:', err.message);
   });
 
-// --- Basic routes ---
+// --- Health / root routes ---
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -40,6 +42,51 @@ app.get('/health', (req, res) => {
     status: 'ok',
     mongoConnected: mongoReady
   });
+});
+
+// --- /cards list endpoint ---
+// GET /cards?page=1&limit=20&search=annie
+app.get('/cards', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const search = (req.query.search || '').trim();
+
+    const query = { game: 'riftbound' };
+
+    if (search) {
+      const regex = new RegExp(search, 'i'); // case-insensitive
+      query.$or = [
+        { name: regex },
+        { cleanName: regex },
+        { code: regex }
+      ];
+    }
+
+    const [total, cards] = await Promise.all([
+      Card.countDocuments(query),
+      Card.find(query)
+        .sort({ name: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+    ]);
+
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+
+    res.json({
+      page,
+      limit,
+      total,
+      totalPages,
+      data: cards
+    });
+  } catch (err) {
+    console.error('[GET /cards] Error:', err.message);
+    res.status(500).json({
+      error: 'Failed to fetch cards'
+    });
+  }
 });
 
 // --- Start server ---
