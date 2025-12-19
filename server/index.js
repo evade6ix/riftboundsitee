@@ -1,6 +1,7 @@
 'use strict';
 
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -8,12 +9,9 @@ const mongoose = require('mongoose');
 const Card = require('./models/Card');
 
 const app = express();
-
-// Railway sets PORT; default 3000 locally
 const PORT = process.env.PORT || 3000;
-
-// Use env var for MongoDB
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/riftbound_local';
+const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors());
 app.use(express.json());
@@ -28,23 +26,16 @@ mongoose
     console.error('[Mongo] Connection error:', err.message);
   });
 
-// --- Health / root routes ---
-app.get('/', (req, res) => {
-  res.json({
-    status: 'ok',
-    message: 'Riftbound API root'
-  });
-});
-
+// --- Health route (for Railway monitoring) ---
 app.get('/health', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1; // 1 = connected
   res.json({
     status: 'ok',
-    mongoConnected: mongoReady
+    mongoConnected: mongoReady,
   });
 });
 
-// --- /cards list endpoint ---
+// --- API: list cards ---
 // GET /cards?page=1&limit=20&search=annie
 app.get('/cards', async (req, res) => {
   try {
@@ -52,14 +43,14 @@ app.get('/cards', async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const search = (req.query.search || '').trim();
 
-    const query = { game: 'riftbound' };
+    const query = { game: 'riftbound' as const };
 
     if (search) {
-      const regex = new RegExp(search, 'i'); // case-insensitive
-      query.$or = [
+      const regex = new RegExp(search, 'i');
+      (query as any).$or = [
         { name: regex },
         { cleanName: regex },
-        { code: regex }
+        { code: regex },
       ];
     }
 
@@ -69,7 +60,7 @@ app.get('/cards', async (req, res) => {
         .sort({ name: 1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .lean()
+        .lean(),
     ]);
 
     const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
@@ -79,23 +70,22 @@ app.get('/cards', async (req, res) => {
       limit,
       total,
       totalPages,
-      data: cards
+      data: cards,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[GET /cards] Error:', err.message);
-    res.status(500).json({
-      error: 'Failed to fetch cards'
-    });
+    res.status(500).json({ error: 'Failed to fetch cards' });
   }
 });
-// --- /cards/:remoteId single card endpoint ---
+
+// --- API: single card by remoteId ---
 app.get('/cards/:remoteId', async (req, res) => {
   try {
     const { remoteId } = req.params;
 
     const card = await Card.findOne({
       game: 'riftbound',
-      remoteId
+      remoteId,
     }).lean();
 
     if (!card) {
@@ -103,11 +93,37 @@ app.get('/cards/:remoteId', async (req, res) => {
     }
 
     res.json(card);
-  } catch (err) {
+  } catch (err: any) {
     console.error('[GET /cards/:remoteId] Error:', err.message);
     res.status(500).json({ error: 'Failed to fetch card' });
   }
 });
+
+// --- Static client (production only) ---
+if (isProd) {
+  const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+
+  // Serve static assets
+  app.use(express.static(clientDistPath));
+
+  // SPA entrypoint
+  app.get('/', (_req, res) => {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+
+  // Optional: if you add client-side routing later, you can also do:
+  // app.get('*', (_req, res) => {
+  //   res.sendFile(path.join(clientDistPath, 'index.html'));
+  // });
+} else {
+  // Simple JSON root for dev
+  app.get('/', (_req, res) => {
+    res.json({
+      status: 'ok',
+      message: 'Riftbound API root (dev)',
+    });
+  });
+}
 
 // --- Start server ---
 app.listen(PORT, () => {
