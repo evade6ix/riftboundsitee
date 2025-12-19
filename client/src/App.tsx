@@ -1,8 +1,10 @@
+// client/src/App.tsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 
 const API_BASE =
-  import.meta.env.VITE_API_URL || "https://riftboundsitee-production.up.railway.app";
+  import.meta.env.VITE_API_URL ||
+  "https://riftboundsitee-production.up.railway.app";
 
 type Card = {
   _id: string;
@@ -23,6 +25,10 @@ type Card = {
   };
   set?: {
     name?: string;
+  };
+  tcgplayer?: {
+    id?: number;
+    url?: string;
   };
 };
 
@@ -48,14 +54,15 @@ function App() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters (UI now, can be wired to backend later)
+  // Filters (still UI-side for now)
   const [rarityFilter, setRarityFilter] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
 
   const limit = 20;
 
-  // Fetch cards for main grid
+  // ---------- Data fetching ----------
+
   const fetchCards = async (pageToLoad = 1, searchQuery = activeSearch) => {
     try {
       setLoading(true);
@@ -80,7 +87,7 @@ function App() {
       setTotal(res.data.total);
     } catch (err: any) {
       console.error(err);
-      setError("Failed to load cards. Please try again.");
+      setError("We couldn’t load cards right now. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -92,7 +99,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced suggestions as user types
+  // Suggestions as user types
   useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);
@@ -118,19 +125,26 @@ function App() {
     return () => clearTimeout(handle);
   }, [search]);
 
-  const applySearch = (value: string) => {
-    setActiveSearch(value);
-    setShowSuggestions(false);
-    fetchCards(1, value);
-  };
+  // ---------- Derived state ----------
 
-  // NOTE: Filters are currently client-side only
   const filteredCards = cards.filter((card) => {
     if (rarityFilter && card.rarity !== rarityFilter) return false;
     if (domainFilter && card.domain !== domainFilter) return false;
     if (typeFilter && card.cardType !== typeFilter) return false;
     return true;
   });
+
+  const hasFilters =
+    !!rarityFilter || !!domainFilter || !!typeFilter || !!activeSearch;
+
+  // ---------- Handlers ----------
+
+  const applySearch = (value: string) => {
+    const trimmed = value.trim();
+    setActiveSearch(trimmed);
+    setShowSuggestions(false);
+    fetchCards(1, trimmed);
+  };
 
   const handleSuggestionClick = (card: Card) => {
     const value = card.name || card.cleanName || card.code || "";
@@ -149,71 +163,77 @@ function App() {
     setTypeFilter("");
   };
 
-  const hasFilters =
-    !!rarityFilter || !!domainFilter || !!typeFilter || !!activeSearch;
+  // ---------- UI ----------
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      {/* Top Nav / Hero */}
-      <header className="border-b border-white/5 bg-slate-950/60 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 shadow-soft flex items-center justify-center">
-              <span className="text-xl font-bold tracking-tight">R</span>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      {/* Top nav */}
+      <header className="border-b border-white/5 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 shadow-lg shadow-indigo-500/40">
+              <span className="text-xl font-black tracking-tight text-slate-950">
+                R
+              </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-semibold tracking-tight">
+              <span className="text-base font-semibold tracking-tight sm:text-lg">
                 Riftbound Nexus
               </span>
-              <span className="text-xs text-slate-400">
-                Card Intelligence for the Riftbound TCG
+              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
+                Real-time card intelligence for Riftbound TCG
               </span>
             </div>
           </div>
 
-          <nav className="flex items-center gap-4 text-sm text-slate-300">
-            <button className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium hover:bg-white/10 transition">
+          <nav className="hidden items-center gap-3 text-xs text-slate-300 sm:flex">
+            <button className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-medium hover:bg-white/10 transition">
               Dashboard
             </button>
-            <button className="rounded-full border border-white/5 px-3 py-1.5 text-xs text-slate-400 hover:bg-white/5 transition">
+            <button className="rounded-full border border-white/5 px-3 py-1.5 text-slate-400 hover:bg-white/5 transition">
               Pricing
             </button>
-            <button className="rounded-full border border-indigo-500/60 bg-indigo-500/10 px-4 py-1.5 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/20 transition">
+            <button className="rounded-full border border-indigo-500 bg-indigo-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/40 hover:bg-indigo-400 transition">
               Sign In
             </button>
           </nav>
         </div>
 
-        <div className="mx-auto max-w-6xl px-4 pb-5">
-          <div className="rounded-3xl border border-white/5 bg-gradient-to-tr from-indigo-500/10 via-sky-500/5 to-emerald-400/10 px-6 py-5 shadow-soft">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-indigo-300">
-                  Riftbound League of Legends TCG
+        {/* Hero strip */}
+        <div className="mx-auto max-w-7xl px-4 pb-5">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-indigo-500/15 via-sky-500/10 to-emerald-400/15 px-6 py-5 shadow-[0_24px_80px_rgba(15,23,42,0.8)]">
+            <div className="absolute -right-24 -top-32 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
+            <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-200">
+                  Riftbound · League of Legends TCG
                 </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
-                  Search every card. Understand every deck.
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[2.1rem]">
+                  Search every card.{" "}
+                  <span className="text-indigo-200">Understand every deck.</span>
                 </h1>
-                <p className="mt-2 max-w-xl text-sm text-slate-300">
-                  A sleek, analytics-driven database for competitors, collectors,
-                  and stores. Lightning-fast search, filters, and card insights
-                  built on top of API TCG.
+                <p className="mt-2 text-sm text-slate-200/90">
+                  A polished, analytics-ready card database for players, creators,
+                  and stores. Type to search, slice with filters, and explore
+                  Riftbound&apos;s full card pool with zero friction.
                 </p>
               </div>
-              <div className="flex gap-3 text-xs text-slate-300">
-                <div className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-3 py-2">
+
+              <div className="flex gap-3 text-xs text-slate-100">
+                <div className="rounded-2xl border border-emerald-400/40 bg-slate-950/60 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-200">
                     Cards Indexed
                   </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums">
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
                     {total || "—"}
                   </p>
                 </div>
-                <div className="rounded-2xl border border-sky-400/40 bg-sky-400/10 px-3 py-2">
+                <div className="rounded-2xl border border-sky-400/40 bg-slate-950/60 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-sky-200">
-                    Page
+                    Browsing Page
                   </p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums">
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
                     {page}/{totalPages || "—"}
                   </p>
                 </div>
@@ -224,17 +244,21 @@ function App() {
       </header>
 
       {/* Main layout */}
-      <main className="mx-auto max-w-6xl px-4 py-6 flex gap-5">
-        {/* Left sidebar: search + filters */}
-        <section className="w-full max-w-xs shrink-0 space-y-5">
-          {/* Search block */}
-          <div className="relative rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-soft">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+      <main className="mx-auto flex max-w-7xl gap-6 px-4 pb-10 pt-4 lg:pt-6">
+        {/* Sidebar: search + filters */}
+        <aside className="w-full max-w-xs shrink-0 space-y-5 md:sticky md:top-6 self-start">
+          {/* Search module */}
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 p-4 shadow-lg shadow-slate-950/70">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
               Card Search
             </p>
-            <h2 className="mt-1 text-sm font-semibold">
+            <h2 className="mt-1 text-sm font-semibold text-slate-50">
               Find a Riftbound card
             </h2>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Autocomplete updates as you type. Hit <span className="font-semibold">Enter</span>{" "}
+              to search.
+            </p>
 
             <form onSubmit={handleSearchSubmit} className="mt-3 space-y-2">
               <div className="relative">
@@ -245,27 +269,30 @@ function App() {
                   onFocus={() => {
                     if (suggestions.length) setShowSuggestions(true);
                   }}
-                  placeholder="Search by name, code…"
-                  className="w-full rounded-2xl border border-slate-600/60 bg-slate-900/80 px-4 py-2.5 text-sm outline-none ring-0 placeholder:text-slate-500 focus:border-indigo-400 focus:bg-slate-900"
+                  placeholder="Annie, Ahri, Jinx…"
+                  className="w-full rounded-2xl border border-slate-600/70 bg-slate-950/90 px-4 py-2.5 text-sm outline-none ring-0 placeholder:text-slate-500 focus:border-indigo-400 focus:bg-slate-950"
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 top-1.5 rounded-2xl bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400 transition"
+                  className="absolute right-1.5 top-1.5 rounded-2xl bg-indigo-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow shadow-indigo-500/40 hover:bg-indigo-400 transition"
                 >
-                  Go
+                  Search
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Try typing{" "}
-                <span className="font-semibold text-slate-200">
-                  Annie, Ahri, Jinx…
-                </span>
-              </p>
+
+              {activeSearch && (
+                <p className="text-[11px] text-slate-400">
+                  Active search:{" "}
+                  <span className="font-semibold text-slate-100">
+                    {activeSearch}
+                  </span>
+                </p>
+              )}
             </form>
 
-            {/* Suggestions dropdown */}
+            {/* Autocomplete dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-[92px] z-20 max-h-64 overflow-y-auto rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-soft">
+              <div className="absolute left-3 right-3 top-[104px] z-30 max-h-72 overflow-y-auto rounded-2xl border border-slate-700/80 bg-slate-950/95 shadow-xl">
                 {loadingSuggestions && (
                   <div className="px-3 py-2 text-[11px] text-slate-400">
                     Searching…
@@ -282,11 +309,11 @@ function App() {
                       <img
                         src={card.images.small}
                         alt={card.name || card.cleanName || ""}
-                        className="h-10 w-7 flex-none rounded-md object-cover"
+                        className="h-9 w-7 flex-none rounded-md object-cover"
                       />
                     )}
                     <div className="flex flex-col">
-                      <span className="font-medium">
+                      <span className="font-medium text-slate-50">
                         {card.name || card.cleanName}
                       </span>
                       <span className="text-[11px] text-slate-400">
@@ -299,14 +326,14 @@ function App() {
             )}
           </div>
 
-          {/* Filter block */}
-          <div className="space-y-3 rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-soft">
+          {/* Filters module */}
+          <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/80 p-4 shadow-lg shadow-slate-950/70">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
                   Filters
                 </p>
-                <h2 className="mt-1 text-sm font-semibold">
+                <h2 className="mt-1 text-sm font-semibold text-slate-50">
                   Refine the card grid
                 </h2>
               </div>
@@ -315,15 +342,15 @@ function App() {
                   onClick={handleClearFilters}
                   className="text-[11px] text-slate-300 underline-offset-2 hover:underline"
                 >
-                  Clear
+                  Clear all
                 </button>
               )}
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-4 text-xs">
               {/* Rarity */}
               <div className="space-y-1.5">
-                <p className="text-[11px] text-slate-400">Rarity</p>
+                <label className="text-[11px] text-slate-400">Rarity</label>
                 <select
                   value={rarityFilter}
                   onChange={(e) => setRarityFilter(e.target.value)}
@@ -340,7 +367,7 @@ function App() {
 
               {/* Domain */}
               <div className="space-y-1.5">
-                <p className="text-[11px] text-slate-400">Domain</p>
+                <label className="text-[11px] text-slate-400">Domain</label>
                 <select
                   value={domainFilter}
                   onChange={(e) => setDomainFilter(e.target.value)}
@@ -358,7 +385,7 @@ function App() {
 
               {/* Type */}
               <div className="space-y-1.5">
-                <p className="text-[11px] text-slate-400">Card Type</p>
+                <label className="text-[11px] text-slate-400">Card Type</label>
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -374,49 +401,47 @@ function App() {
             </div>
 
             <p className="pt-1 text-[11px] text-slate-500">
-              Filters are applied on top of the current search. More advanced
-              analytics, deck views, and price overlays can plug into this
-              panel later.
+              Filters layer on top of search. Later we can plug in price overlays,
+              deck usage, and meta stats here.
             </p>
           </div>
-        </section>
+        </aside>
 
-        {/* Center: card grid */}
-        <section className="flex-1 space-y-3">
-          {/* Status / meta */}
+        {/* Main content: card grid */}
+        <section className="flex-1 space-y-4">
+          {/* Toolbar / status */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
                 Card Browser
               </p>
-              <p className="text-sm text-slate-300">
+              <p className="mt-1 text-sm text-slate-300">
                 Showing{" "}
-                <span className="font-semibold">
-                  {filteredCards.length}
-                </span>{" "}
-                of{" "}
-                <span className="font-semibold">
-                  {total}
-                </span>{" "}
-                cards on this page.
+                <span className="font-semibold">{filteredCards.length}</span> of{" "}
+                <span className="font-semibold">{total}</span> cards on this page.
               </p>
             </div>
 
             <div className="flex items-center gap-3 text-[11px] text-slate-400">
               {activeSearch && (
-                <span className="rounded-full border border-indigo-500/40 bg-indigo-500/5 px-3 py-1 text-xs text-indigo-100">
+                <span className="rounded-full border border-indigo-500/50 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-100">
                   Search: {activeSearch}
                 </span>
               )}
+              {hasFilters && (
+                <span className="rounded-full border border-slate-600/70 bg-slate-900 px-3 py-1">
+                  Filters active
+                </span>
+              )}
               {loading && (
-                <span className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1 text-[11px]">
+                <span className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1">
                   Loading…
                 </span>
               )}
             </div>
           </div>
 
-          {/* Error state */}
+          {/* Error */}
           {error && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
               {error}
@@ -428,8 +453,9 @@ function App() {
             {filteredCards.map((card) => (
               <article
                 key={card._id}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 shadow-soft transition hover:-translate-y-1 hover:border-indigo-400/70 hover:bg-slate-900"
+                className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 shadow-[0_18px_50px_rgba(15,23,42,0.9)] transition hover:-translate-y-1.5 hover:border-indigo-400/70 hover:bg-slate-900"
               >
+                {/* Card art */}
                 {card.images?.large && (
                   <div className="relative overflow-hidden">
                     <img
@@ -437,70 +463,79 @@ function App() {
                       alt={card.name || card.cleanName || ""}
                       className="aspect-[3/4] w-full object-cover transition duration-500 group-hover:scale-105"
                     />
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent opacity-90" />
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-transparent opacity-95" />
                   </div>
                 )}
 
-                <div className="relative -mt-12 z-10 px-3 pb-3 pt-2">
+                {/* Card content */}
+                <div className="relative -mt-12 z-10 space-y-3 px-3 pb-3 pt-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold leading-tight">
-                      {card.name || card.cleanName}
-                    </h3>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-semibold leading-tight text-slate-50 line-clamp-2">
+                        {card.name || card.cleanName}
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        {card.set?.name || "Riftbound Set"} ·{" "}
+                        <span className="font-mono text-slate-300">
+                          {card.code}
+                        </span>
+                      </p>
+                    </div>
                     {card.rarity && (
-                      <span className="rounded-full border border-white/15 bg-slate-950/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-slate-300">
+                      <span className="rounded-full border border-white/15 bg-slate-950/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-200">
                         {card.rarity}
                       </span>
                     )}
                   </div>
 
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    {card.set?.name || "Riftbound Set"}
-                  </p>
-
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-slate-200">
+                  <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-100">
                     {card.domain && (
-                      <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] text-indigo-100">
+                      <span className="rounded-full bg-indigo-500/25 px-2 py-0.5 text-[10px] text-indigo-50">
                         {card.domain}
                       </span>
                     )}
                     {card.cardType && (
-                      <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] text-sky-100">
+                      <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] text-sky-50">
                         {card.cardType}
                       </span>
                     )}
                     {card.energyCost && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-100">
+                      <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-50">
                         Energy {card.energyCost}
                       </span>
                     )}
                     {card.might && (
-                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-100">
+                      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-50">
                         Might {card.might}
                       </span>
                     )}
                   </div>
 
-                  <button
-                    className="mt-3 inline-flex w-full items-center justify-center rounded-2xl border border-indigo-500/70 bg-indigo-500/15 px-3 py-1.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25"
-                    onClick={() =>
-                      window.open(
-                        `${API_BASE}/cards/${encodeURIComponent(
-                          card.remoteId
-                        )}`,
-                        "_blank"
-                      )
-                    }
-                  >
-                    View raw card JSON
-                  </button>
+                  {/* Footer meta line */}
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="font-mono">
+                      ID: {card.remoteId.replace("origins-", "")}
+                    </span>
+                    {card.tcgplayer?.url && (
+                      <a
+                        href={card.tcgplayer.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-semibold text-sky-300 underline-offset-2 hover:text-sky-200 hover:underline"
+                      >
+                        View on TCGplayer
+                      </a>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}
 
             {!loading && filteredCards.length === 0 && (
-              <div className="col-span-full rounded-3xl border border-dashed border-slate-700 bg-slate-950/60 px-6 py-10 text-center text-sm text-slate-400">
-                No cards match your current search or filters. Try clearing
-                filters or searching for a different name.
+              <div className="col-span-full rounded-3xl border border-dashed border-slate-700 bg-slate-950/80 px-6 py-10 text-center text-sm text-slate-400">
+                No cards match your current search or filters.
+                <br />
+                Try clearing filters or searching for a different name or code.
               </div>
             )}
           </div>
@@ -509,8 +544,8 @@ function App() {
           <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-300">
             <div>
               Page{" "}
-              <span className="font-semibold">{page}</span> of{" "}
-              <span className="font-semibold">{totalPages}</span>
+              <span className="font-semibold text-slate-50">{page}</span> of{" "}
+              <span className="font-semibold text-slate-50">{totalPages}</span>
             </div>
 
             <div className="flex gap-2">
@@ -524,7 +559,7 @@ function App() {
               <button
                 disabled={page >= totalPages || loading}
                 onClick={() => fetchCards(page + 1)}
-                className="rounded-full border border-indigo-500/70 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-100 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-indigo-500/25"
+                className="rounded-full border border-indigo-500 bg-indigo-500/80 px-3 py-1.5 text-xs font-semibold text-white shadow shadow-indigo-500/40 disabled:cursor-not-allowed disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-indigo-400"
               >
                 Next
               </button>
