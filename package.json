@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "NODE_ENV=development node server/index.js",
     "start": "NODE_ENV=production node server/index.js",
-    "seed:riftbound": "NODE_ENV=development node server/scripts/seedRiftbound.js"
+    "seed:riftbound": "NODE_ENV=development node server/scripts/seedRiftbound.js",
+    "postinstall": "npm --prefix client install --omit=dev=false && npm --prefix client run build"
   },
   "dependencies": {
     "axios": "^1.7.9",
