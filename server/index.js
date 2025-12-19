@@ -88,6 +88,26 @@ app.get('/cards', async (req, res) => {
     });
   }
 });
+// --- /cards/:remoteId single card endpoint ---
+app.get('/cards/:remoteId', async (req, res) => {
+  try {
+    const { remoteId } = req.params;
+
+    const card = await Card.findOne({
+      game: 'riftbound',
+      remoteId
+    }).lean();
+
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    res.json(card);
+  } catch (err) {
+    console.error('[GET /cards/:remoteId] Error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch card' });
+  }
+});
 
 // --- Start server ---
 app.listen(PORT, () => {
