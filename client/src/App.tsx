@@ -168,7 +168,6 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Top nav */}
-      <header className="border-b border-white/5 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 shadow-lg shadow-indigo-500/40">
@@ -199,49 +198,7 @@ function App() {
           </nav>
         </div>
 
-        {/* Hero strip */}
-        <div className="mx-auto max-w-7xl px-4 pb-5">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-indigo-500/15 via-sky-500/10 to-emerald-400/15 px-6 py-5 shadow-[0_24px_80px_rgba(15,23,42,0.8)]">
-            <div className="absolute -right-24 -top-32 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-            <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="max-w-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-indigo-200">
-                  Riftbound · League of Legends TCG
-                </p>
-                <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[2.1rem]">
-                  Search every card.{" "}
-                  <span className="text-indigo-200">Understand every deck.</span>
-                </h1>
-                <p className="mt-2 text-sm text-slate-200/90">
-                  A polished, analytics-ready card database for players, creators,
-                  and stores. Type to search, slice with filters, and explore
-                  Riftbound&apos;s full card pool with zero friction.
-                </p>
-              </div>
 
-              <div className="flex gap-3 text-xs text-slate-100">
-                <div className="rounded-2xl border border-emerald-400/40 bg-slate-950/60 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-200">
-                    Cards Indexed
-                  </p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums">
-                    {total || "—"}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-sky-400/40 bg-slate-950/60 px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-sky-200">
-                    Browsing Page
-                  </p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums">
-                    {page}/{totalPages || "—"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main layout */}
       <main className="mx-auto flex max-w-7xl gap-6 px-4 pb-10 pt-4 lg:pt-6">
