@@ -13,9 +13,16 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://mongo:KNVmtyGQtdCUOSLCdXngnvuqNHxZpbyJ@trolley.proxy.rlwy.net:43876';
+
+// Read Mongo URI from environment (Railway / .env), with a safe local fallback
+const mongoUri =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URL ||
+  'mongodb://127.0.0.1:27017/riftbound_local';
+
 const isProd = process.env.NODE_ENV === 'production';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-change-me';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'super_secret_riftbound_token_key_change_me';
 
 app.use(cors());
 app.use(express.json());
@@ -57,23 +64,30 @@ app.get('/health', (req, res) => {
 
 // ---------------- AUTH ROUTES ----------------
 
+// POST /auth/register
 app.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
 
     if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required.' });
+      return res
+        .status(400)
+        .json({ error: 'Name, email, and password are required.' });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
-      return res.status(409).json({ error: 'An account already exists for that email.' });
+      return res
+        .status(409)
+        .json({ error: 'An account already exists for that email.' });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      return res
+        .status(400)
+        .json({ error: 'Password must be at least 6 characters.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -84,7 +98,9 @@ app.post('/auth/register', async (req, res) => {
       passwordHash,
     });
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: '7d',
+    });
 
     return res.status(201).json({
       token,
@@ -95,16 +111,13 @@ app.post('/auth/register', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[POST /auth/register] Error:', err); // full error
-
-    // TEMP: expose message so we can debug
+    console.error('[POST /auth/register] Error:', err);
     return res.status(500).json({
       error: 'Failed to register.',
       detail: err.message || 'no message',
     });
   }
 });
-
 
 // POST /auth/login
 // body: { email, password }
@@ -113,7 +126,9 @@ app.post('/auth/login', async (req, res) => {
     const { email, password } = req.body || {};
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required.' });
+      return res
+        .status(400)
+        .json({ error: 'Email and password are required.' });
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
@@ -128,9 +143,11 @@ app.post('/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: '7d',
+    });
 
-    res.json({
+    return res.json({
       token,
       user: {
         id: user._id.toString(),
@@ -139,26 +156,26 @@ app.post('/auth/login', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[POST /auth/login] Error:', err.message);
-    res.status(500).json({ error: 'Failed to login.' });
+    console.error('[POST /auth/login] Error:', err);
+    return res.status(500).json({ error: 'Failed to login.' });
   }
 });
 
-// GET /auth/me  (optional: validate token & fetch user)
+// GET /auth/me  (validate token & fetch user)
 app.get('/auth/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).lean();
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-    res.json({
+    return res.json({
       id: user._id.toString(),
       name: user.name,
       email: user.email,
     });
   } catch (err) {
-    console.error('[GET /auth/me] Error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch user.' });
+    console.error('[GET /auth/me] Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch user.' });
   }
 });
 
@@ -168,18 +185,17 @@ app.get('/auth/me', authMiddleware, async (req, res) => {
 app.get('/cards', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit, 10) || 20)
+    );
     const search = (req.query.search || '').trim();
 
     const query = { game: 'riftbound' };
 
     if (search) {
       const regex = new RegExp(search, 'i');
-      query.$or = [
-        { name: regex },
-        { cleanName: regex },
-        { code: regex },
-      ];
+      query.$or = [{ name: regex }, { cleanName: regex }, { code: regex }];
     }
 
     const [total, cards] = await Promise.all([
@@ -193,7 +209,7 @@ app.get('/cards', async (req, res) => {
 
     const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
 
-    res.json({
+    return res.json({
       page,
       limit,
       total,
@@ -201,8 +217,8 @@ app.get('/cards', async (req, res) => {
       data: cards,
     });
   } catch (err) {
-    console.error('[GET /cards] Error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch cards' });
+    console.error('[GET /cards] Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch cards' });
   }
 });
 
@@ -220,10 +236,10 @@ app.get('/cards/:remoteId', async (req, res) => {
       return res.status(404).json({ error: 'Card not found' });
     }
 
-    res.json(card);
+    return res.json(card);
   } catch (err) {
-    console.error('[GET /cards/:remoteId] Error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch card' });
+    console.error('[GET /cards/:remoteId] Error:', err);
+    return res.status(500).json({ error: 'Failed to fetch card' });
   }
 });
 
