@@ -12,7 +12,7 @@ const Card = require('./models/Card');
 const User = require('./models/User');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 // Read Mongo URI from environment (Railway / .env), with a safe local fallback
 const mongoUri =
