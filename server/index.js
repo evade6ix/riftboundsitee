@@ -1,4 +1,3 @@
-cat << 'EOF' > server/index.js
 'use strict';
 
 require('dotenv').config();
@@ -246,4 +245,3 @@ if (isProd) {
 app.listen(PORT, () => {
   console.log('[Server] Listening on port ' + PORT);
 });
-EOF
