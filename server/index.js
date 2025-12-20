@@ -13,7 +13,7 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/riftbound_local';
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/riftbound_local';
 const isProd = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-change-me';
 
