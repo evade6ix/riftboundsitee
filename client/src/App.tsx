@@ -1,4 +1,3 @@
-// client/src/App.tsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -40,7 +39,279 @@ type CardsResponse = {
   data: Card[];
 };
 
+type User = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+const TOKEN_KEY = "riftbound_token";
+const USER_KEY = "riftbound_user";
+
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  // Load saved auth on first load
+  useEffect(() => {
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    const savedUser = localStorage.getItem(USER_KEY);
+    if (savedToken && savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser) as User;
+        setToken(savedToken);
+        setUser(parsed);
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
+    }
+    setAuthChecking(false);
+  }, []);
+
+  // Set axios auth header when token changes
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
+
+  const handleAuthSuccess = (tokenValue: string, userValue: User) => {
+    setToken(tokenValue);
+    setUser(userValue);
+    localStorage.setItem(TOKEN_KEY, tokenValue);
+    localStorage.setItem(USER_KEY, JSON.stringify(userValue));
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  };
+
+  if (authChecking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
+        <div className="rounded-2xl border border-white/10 bg-slate-900 px-6 py-4 text-sm">
+          Checking session…
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onSuccess={handleAuthSuccess} />;
+  }
+
+  return (
+    <Dashboard user={user} onLogout={handleLogout} />
+  );
+}
+
+// ---------------- AUTH UI ----------------
+
+function AuthScreen({
+  onSuccess,
+}: {
+  onSuccess: (token: string, user: User) => void;
+}) {
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerName, setRegisterName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [loading, setLoading] = useState<"login" | "register" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading("login");
+    try {
+      const res = await axios.post(`${API_BASE}/auth/login`, {
+        email: loginEmail,
+        password: loginPassword,
+      });
+      onSuccess(res.data.token, res.data.user);
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err?.response?.data?.error || "Unable to login. Please try again."
+      );
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading("register");
+    try {
+      const res = await axios.post(`${API_BASE}/auth/register`, {
+        name: registerName,
+        email: registerEmail,
+        password: registerPassword,
+      });
+      onSuccess(res.data.token, res.data.user);
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err?.response?.data?.error || "Unable to register. Please try again."
+      );
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-8 md:flex-row md:items-center md:justify-between">
+        {/* Left: branding / pitch */}
+        <div className="max-w-md space-y-4">
+          <div className="inline-flex items-center gap-3 rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-indigo-100">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Riftbound · League of Legends TCG
+          </div>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            Sign in to{" "}
+            <span className="text-indigo-200">Riftbound Nexus</span>
+          </h1>
+          <p className="text-sm text-slate-300">
+            One place for your Riftbound card intelligence: search, filter, and
+            analyze the full card pool. Create an account in seconds, or sign in
+            to continue.
+          </p>
+          <div className="mt-4 flex items-center gap-3 text-[11px] text-slate-400">
+            <div className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                Built for
+              </p>
+              <p className="text-xs font-semibold">Players, stores & creators</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                Powered by
+              </p>
+              <p className="text-xs font-semibold">API TCG & MongoDB</p>
+            </div>
+          </div>
+          {error && (
+            <div className="mt-4 inline-flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+              <span className="mt-[2px] text-[10px]">!</span>
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: auth cards */}
+        <div className="mt-8 grid w-full max-w-xl gap-4 md:mt-0 md:grid-cols-2">
+          {/* Login */}
+          <form
+            onSubmit={handleLogin}
+            className="flex flex-col rounded-3xl border border-white/10 bg-slate-900/90 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.9)]"
+          >
+            <h2 className="text-sm font-semibold">Sign in</h2>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Already have an account? Enter your details to continue.
+            </p>
+
+            <label className="mt-3 text-[11px] text-slate-300">
+              Email
+              <input
+                type="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                required
+                className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+              />
+            </label>
+
+            <label className="mt-3 text-[11px] text-slate-300">
+              Password
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                required
+                className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading === "login"}
+              className="mt-4 rounded-2xl bg-indigo-500 px-3 py-2 text-xs font-semibold text-white shadow shadow-indigo-500/40 hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700"
+            >
+              {loading === "login" ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+
+          {/* Register */}
+          <form
+            onSubmit={handleRegister}
+            className="flex flex-col rounded-3xl border border-white/10 bg-slate-900/90 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.9)]"
+          >
+            <h2 className="text-sm font-semibold">No account? Register here</h2>
+            <p className="mt-1 text-[11px] text-slate-400">
+              We’ll create a secure account tied to your email.
+            </p>
+
+            <label className="mt-3 text-[11px] text-slate-300">
+              Name
+              <input
+                type="text"
+                value={registerName}
+                onChange={(e) => setRegisterName(e.target.value)}
+                required
+                className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+              />
+            </label>
+
+            <label className="mt-3 text-[11px] text-slate-300">
+              Email
+              <input
+                type="email"
+                value={registerEmail}
+                onChange={(e) => setRegisterEmail(e.target.value)}
+                required
+                className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+              />
+            </label>
+
+            <label className="mt-3 text-[11px] text-slate-300">
+              Password
+              <input
+                type="password"
+                value={registerPassword}
+                onChange={(e) => setRegisterPassword(e.target.value)}
+                required
+                minLength={6}
+                className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-indigo-400"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading === "register"}
+              className="mt-4 rounded-2xl border border-indigo-400/70 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:border-slate-700 disabled:text-slate-500"
+            >
+              {loading === "register" ? "Creating account…" : "Create account"}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- DASHBOARD (card browser) ----------------
+
+function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [cards, setCards] = useState<Card[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -54,14 +325,11 @@ function App() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters (still UI-side for now)
   const [rarityFilter, setRarityFilter] = useState("");
   const [domainFilter, setDomainFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
 
   const limit = 20;
-
-  // ---------- Data fetching ----------
 
   const fetchCards = async (pageToLoad = 1, searchQuery = activeSearch) => {
     try {
@@ -93,13 +361,11 @@ function App() {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchCards(1, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Suggestions as user types
   useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);
@@ -125,8 +391,6 @@ function App() {
     return () => clearTimeout(handle);
   }, [search]);
 
-  // ---------- Derived state ----------
-
   const filteredCards = cards.filter((card) => {
     if (rarityFilter && card.rarity !== rarityFilter) return false;
     if (domainFilter && card.domain !== domainFilter) return false;
@@ -136,8 +400,6 @@ function App() {
 
   const hasFilters =
     !!rarityFilter || !!domainFilter || !!typeFilter || !!activeSearch;
-
-  // ---------- Handlers ----------
 
   const applySearch = (value: string) => {
     const trimmed = value.trim();
@@ -163,47 +425,37 @@ function App() {
     setTypeFilter("");
   };
 
-  // ---------- UI ----------
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top nav */}
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 shadow-lg shadow-indigo-500/40">
-              <span className="text-xl font-black tracking-tight text-slate-950">
-                R
-              </span>
+      {/* Small top bar with user + logout */}
+      <div className="border-b border-white/5 bg-slate-950/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-xs">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 via-sky-400 to-emerald-400 text-[11px] font-black text-slate-950">
+              R
             </div>
             <div className="flex flex-col">
-              <span className="text-base font-semibold tracking-tight sm:text-lg">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 Riftbound Nexus
               </span>
-              <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">
-                Real-time card intelligence for Riftbound TCG
+              <span className="text-[11px] text-slate-300">
+                Signed in as <span className="font-semibold">{user.name}</span>
               </span>
             </div>
           </div>
-
-          <nav className="hidden items-center gap-3 text-xs text-slate-300 sm:flex">
-            <button className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-medium hover:bg-white/10 transition">
-              Dashboard
-            </button>
-            <button className="rounded-full border border-white/5 px-3 py-1.5 text-slate-400 hover:bg-white/5 transition">
-              Pricing
-            </button>
-            <button className="rounded-full border border-indigo-500 bg-indigo-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/40 hover:bg-indigo-400 transition">
-              Sign In
-            </button>
-          </nav>
+          <button
+            onClick={onLogout}
+            className="rounded-full border border-slate-600 bg-slate-900 px-3 py-1 text-[11px] text-slate-200 hover:bg-slate-800"
+          >
+            Log out
+          </button>
         </div>
-
-
+      </div>
 
       {/* Main layout */}
       <main className="mx-auto flex max-w-7xl gap-6 px-4 pb-10 pt-4 lg:pt-6">
         {/* Sidebar: search + filters */}
-        <aside className="w-full max-w-xs shrink-0 space-y-5 md:sticky md:top-6 self-start">
+        <aside className="w-full max-w-xs shrink-0 space-y-5 md:sticky md:top-20 self-start">
           {/* Search module */}
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 p-4 shadow-lg shadow-slate-950/70">
             <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
@@ -212,10 +464,6 @@ function App() {
             <h2 className="mt-1 text-sm font-semibold text-slate-50">
               Find a Riftbound card
             </h2>
-            <p className="mt-1 text-[11px] text-slate-400">
-              Autocomplete updates as you type. Hit <span className="font-semibold">Enter</span>{" "}
-              to search.
-            </p>
 
             <form onSubmit={handleSearchSubmit} className="mt-3 space-y-2">
               <div className="relative">
@@ -236,15 +484,6 @@ function App() {
                   Search
                 </button>
               </div>
-
-              {activeSearch && (
-                <p className="text-[11px] text-slate-400">
-                  Active search:{" "}
-                  <span className="font-semibold text-slate-100">
-                    {activeSearch}
-                  </span>
-                </p>
-              )}
             </form>
 
             {/* Autocomplete dropdown */}
@@ -305,7 +544,6 @@ function App() {
             </div>
 
             <div className="space-y-4 text-xs">
-              {/* Rarity */}
               <div className="space-y-1.5">
                 <label className="text-[11px] text-slate-400">Rarity</label>
                 <select
@@ -322,7 +560,6 @@ function App() {
                 </select>
               </div>
 
-              {/* Domain */}
               <div className="space-y-1.5">
                 <label className="text-[11px] text-slate-400">Domain</label>
                 <select
@@ -340,7 +577,6 @@ function App() {
                 </select>
               </div>
 
-              {/* Type */}
               <div className="space-y-1.5">
                 <label className="text-[11px] text-slate-400">Card Type</label>
                 <select
@@ -356,17 +592,11 @@ function App() {
                 </select>
               </div>
             </div>
-
-            <p className="pt-1 text-[11px] text-slate-500">
-              Filters layer on top of search. Later we can plug in price overlays,
-              deck usage, and meta stats here.
-            </p>
           </div>
         </aside>
 
-        {/* Main content: card grid */}
+        {/* Card grid */}
         <section className="flex-1 space-y-4">
-          {/* Toolbar / status */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
@@ -398,21 +628,18 @@ function App() {
             </div>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-xs text-red-100">
               {error}
             </div>
           )}
 
-          {/* Card grid */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredCards.map((card) => (
               <article
                 key={card._id}
                 className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 shadow-[0_18px_50px_rgba(15,23,42,0.9)] transition hover:-translate-y-1.5 hover:border-indigo-400/70 hover:bg-slate-900"
               >
-                {/* Card art */}
                 {card.images?.large && (
                   <div className="relative overflow-hidden">
                     <img
@@ -424,7 +651,6 @@ function App() {
                   </div>
                 )}
 
-                {/* Card content */}
                 <div className="relative -mt-12 z-10 space-y-3 px-3 pb-3 pt-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
@@ -467,23 +693,6 @@ function App() {
                       </span>
                     )}
                   </div>
-
-                  {/* Footer meta line */}
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-mono">
-                      ID: {card.remoteId.replace("origins-", "")}
-                    </span>
-                    {card.tcgplayer?.url && (
-                      <a
-                        href={card.tcgplayer.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-semibold text-sky-300 underline-offset-2 hover:text-sky-200 hover:underline"
-                      >
-                        View on TCGplayer
-                      </a>
-                    )}
-                  </div>
                 </div>
               </article>
             ))}
@@ -497,7 +706,6 @@ function App() {
             )}
           </div>
 
-          {/* Pagination */}
           <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-300">
             <div>
               Page{" "}
