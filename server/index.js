@@ -12,9 +12,9 @@ const Card = require('./models/Card');
 const User = require('./models/User');
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3000;
 
-// Read Mongo URI from environment (Railway / .env), with a safe local fallback
+// --- Mongo URI from env (Railway / .env) ---
 const mongoUri =
   process.env.MONGODB_URI ||
   process.env.MONGO_URL ||
@@ -34,7 +34,7 @@ mongoose
     console.log('[Mongo] Connected successfully');
   })
   .catch((err) => {
-    console.error('[Mongo] Connection error:', err.message);
+    console.error('[Mongo] Connection error:', err);
   });
 
 // --- Simple auth middleware for /auth/me ---
@@ -120,7 +120,6 @@ app.post('/auth/register', async (req, res) => {
 });
 
 // POST /auth/login
-// body: { email, password }
 app.post('/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -161,7 +160,7 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
-// GET /auth/me  (validate token & fetch user)
+// GET /auth/me
 app.get('/auth/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.userId).lean();
@@ -181,7 +180,6 @@ app.get('/auth/me', authMiddleware, async (req, res) => {
 
 // ---------------- CARD ROUTES ----------------
 
-// GET /cards?page=1&limit=20&search=annie
 app.get('/cards', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -222,7 +220,6 @@ app.get('/cards', async (req, res) => {
   }
 });
 
-// GET /cards/:remoteId
 app.get('/cards/:remoteId', async (req, res) => {
   try {
     const remoteId = req.params.remoteId;
