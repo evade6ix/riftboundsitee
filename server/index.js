@@ -13,7 +13,7 @@ const User = require('./models/User');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/riftbound_local';
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://mongo:KNVmtyGQtdCUOSLCdXngnvuqNHxZpbyJ@trolley.proxy.rlwy.net:43876';
 const isProd = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-change-me';
 
@@ -57,8 +57,6 @@ app.get('/health', (req, res) => {
 
 // ---------------- AUTH ROUTES ----------------
 
-// POST /auth/register
-// body: { name, email, password }
 app.post('/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body || {};
@@ -88,7 +86,7 @@ app.post('/auth/register', async (req, res) => {
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({
+    return res.status(201).json({
       token,
       user: {
         id: user._id.toString(),
@@ -97,10 +95,16 @@ app.post('/auth/register', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[POST /auth/register] Error:', err.message);
-    res.status(500).json({ error: 'Failed to register.' });
+    console.error('[POST /auth/register] Error:', err); // full error
+
+    // TEMP: expose message so we can debug
+    return res.status(500).json({
+      error: 'Failed to register.',
+      detail: err.message || 'no message',
+    });
   }
 });
+
 
 // POST /auth/login
 // body: { email, password }
